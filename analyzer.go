@@ -5,16 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sort"
+	
 )
 
-// Suffix Estructura para almacenar un sufijo y su índice
-type Suffix struct {
-	index int
-	suff  string
-}
-
-// Función para leer un archivo y devolver su contenido como una cadena
+// Función para leer un archivo y devolver su contenido
 func readFile(filename string) string {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -24,202 +18,98 @@ func readFile(filename string) string {
 	return string(content)
 }
 
-// Función para generar el Suffix Array
-func buildSuffixArray(s string) []int {
-	var suffixes []Suffix
-
-	// Generar todos los sufijos
-	for i := 0; i < len(s); i++ {
-		suffixes = append(suffixes, Suffix{i, s[i:]})
+// Función para encontrar la mayor substring común entre dos textos
+func longestCommonSubstring(text1, text2 string) string {
+	maxLen := 0
+	longestSubstr := ""
+	
+	// Creamos una tabla para almacenar la longitud de substrings comunes
+	table := make([][]int, len(text1)+1)
+	for i := range table {
+		table[i] = make([]int, len(text2)+1)
 	}
 
-	// Ordenar los sufijos basados en la cadena de sufijos
-	sort.Slice(suffixes, func(i, j int) bool {
-		return suffixes[i].suff < suffixes[j].suff
-	})
-
-	// Extraer solo los índices para el Suffix Array
-	suffixArray := make([]int, len(s))
-	for i := range suffixes {
-		suffixArray[i] = suffixes[i].index
-	}
-
-	return suffixArray
-}
-
-// Función para contar los caracteres en BWT
-func countChars(bwt string) map[byte]int {
-	charCount := make(map[byte]int)
-	for i := 0; i < len(bwt); i++ {
-		charCount[bwt[i]]++
-	}
-	return charCount
-}
-
-// Función para construir el arreglo C
-func buildC(bwt string) map[byte]int {
-	charCount := countChars(bwt)
-	var chars []byte
-	for ch := range charCount {
-		chars = append(chars, ch)
-	}
-	sort.Slice(chars, func(i, j int) bool {
-		return chars[i] < chars[j]
-	})
-
-	C := make(map[byte]int)
-	total := 0
-	for _, ch := range chars {
-		C[ch] = total
-		total += charCount[ch]
-	}
-
-	fmt.Println("Paso 1: Construir el arreglo C (número de caracteres anteriores):", C)
-	return C
-}
-
-// Función para construir el arreglo Occur
-func buildOccur(bwt string) map[byte][]int {
-	charCount := countChars(bwt)
-	Occur := make(map[byte][]int)
-	for ch := range charCount {
-		Occur[ch] = make([]int, len(bwt)+1)
-	}
-
-	for i := 0; i < len(bwt); i++ {
-		for ch := range charCount {
-			if i > 0 {
-				Occur[ch][i] = Occur[ch][i-1]
+	// Llenamos la tabla comparando cada carácter de text1 y text2
+	for i := 1; i <= len(text1); i++ {
+		for j := 1; j <= len(text2); j++ {
+			if text1[i-1] == text2[j-1] {
+				table[i][j] = table[i-1][j-1] + 1
+				if table[i][j] > maxLen {
+					maxLen = table[i][j]
+					longestSubstr = text1[i-maxLen : i]
+				}
 			}
 		}
-		Occur[bwt[i]][i]++
 	}
 
-	fmt.Println("Paso 2: Construir el arreglo Occur (ocurrencias por carácter hasta cada posición):", Occur)
-	return Occur
+	return longestSubstr
 }
 
-// Función para realizar la transformación inversa usando LF-mapping
-func inverseBWT(bwt string, C map[byte]int, Occur map[byte][]int) string {
-	original := make([]byte, len(bwt))
-	var index int
+// Función para comparar archivos y determinar similitud basada en más del 50% de contenido común
+func compareFiles(files []string) {
+	fileContents := make(map[string]string)
 
-	// Encontrar el índice del símbolo '$' que marca el final de la cadena
-	for i := 0; i < len(bwt); i++ {
-		if bwt[i] == '$' {
-			index = i
-			break
+	// Leer todos los archivos
+	for _, file := range files {
+		content := readFile(file)
+		fileContents[file] = content
+	}
+
+	// Comparar los archivos
+	similarFiles := make([][2]string, 0)
+
+	for i := 0; i < len(files); i++ {
+		for j := i + 1; j < len(files); j++ {
+			// Obtener el contenido de los archivos
+			content1 := fileContents[files[i]]
+			content2 := fileContents[files[j]]
+
+			// Encontrar la mayor substring común
+			longestCommon := longestCommonSubstring(content1, content2)
+
+			// Determinar el tamaño de la substring común
+			lenCommon := len(longestCommon)
+			lenText1 := len(content1)
+			lenText2 := len(content2)
+
+			// Verificar si la substring común es mayor al 50% del texto más corto
+			if float64(lenCommon) >= 0.3*float64(min(lenText1, lenText2)) {
+				similarFiles = append(similarFiles, [2]string{files[i], files[j]})
+			}
 		}
 	}
 
-	fmt.Println("Paso 3: Encontrar la posición del símbolo '$' (posición inicial en BWT):", index)
-
-	// Reconstrucción de la cadena original
-	fmt.Println("Paso 4: Reconstrucción de la cadena original usando LF-mapping:")
-	for i := len(bwt) - 1; i >= 0; i-- {
-		original[i] = bwt[index]
-		fmt.Printf("Posición %d -> Carácter '%c' -> Índice en LF: %d\n", i, bwt[index], index)
-		index = C[bwt[index]] + Occur[bwt[index]][index] - 1
+	// Mostrar resultados finales
+	fmt.Println("Archivos similares (comparten más del 50% de contenido):")
+	for _, pair := range similarFiles {
+		fmt.Printf("Archivo %s y Archivo %s son similares.\n", pair[0], pair[1])
 	}
+}	
 
-	return string(original)
-}
-
-// Función que ejecuta el proceso de BWT
-func runBWT(bwt string) (map[byte]int, map[byte][]int, string) {
-	fmt.Println("Paso 0: BWT de entrada:", bwt)
-
-	// Construir el arreglo C
-	c := buildC(bwt)
-
-	// Construir el arreglo Occur
-	occur := buildOccur(bwt)
-
-	// Realizar la transformación inversa usando LF-mapping
-	original := inverseBWT(bwt, c, occur)
-
-	return c, occur, original
-}
-
-// Función para realizar la búsqueda hacia atrás (backwardSearch) usando FM-Index
-func backwardSearch(pattern string, bwt string) []int {
-	SuffixArray := buildSuffixArray(bwt)
-	bwtC, bwtOcc, _ := runBWT(bwt)
-
-	i := len(pattern) - 1
-	c := pattern[i]
-
-	// Verificamos si el carácter está en el mapa C
-	if _, exists := bwtC[c]; !exists {
-		return []int{} // El carácter no está en el texto
+// Función auxiliar para encontrar el mínimo entre dos números
+func min(a, b int) int {
+	if a < b {
+		return a
 	}
-
-	// Inicializamos los límites l y r
-	l := bwtC[c]
-	r := len(bwt) - 1
-	if next, exists := bwtC[c+1]; exists {
-		r = next - 1
-	}
-
-	// Iteramos sobre el patrón de derecha a izquierda
-	for l <= r && i > 0 {
-		i--
-		c = pattern[i]
-
-		if _, exists := bwtC[c]; !exists {
-			return []int{} // Si el carácter no está en C
-		}
-
-		// Actualizamos los límites usando el LF-mapping
-		l = bwtC[c] + bwtOcc[c][l-1]
-		r = bwtC[c] + bwtOcc[c][r] - 1
-	}
-
-	// Si l <= r, retornamos el rango en el suffix array
-	if l <= r {
-		return SuffixArray[l : r+1]
-	}
-	return []int{}
+	return b
 }
 
 func main() {
-	// Llama a "Suffix Array"
-	fmt.Println("Ejecutando Suffix Array")
-
-	// Get all files in "data" directory
+	// Leer todos los archivos de la carpeta "data"
 	files, err := ioutil.ReadDir("data")
 	if err != nil {
 		fmt.Println("Error al leer la carpeta data:", err)
 		os.Exit(1)
 	}
 
-	// Iterate through all files in "data" directory
+	// Filtrar solo los archivos .txt
+	var textFiles []string
 	for _, file := range files {
 		if !file.IsDir() && filepath.Ext(file.Name()) == ".txt" {
-			filePath := filepath.Join("data", file.Name())
-			fmt.Println("Procesando archivo:", filePath)
-
-			// Read and process each .txt file
-			content := readFile(filePath)
-			content = content + "$"
-
-			// Construye el Suffix Array
-			suffixArray := buildSuffixArray(content)
-			fmt.Println("Suffix Array:")
-			fmt.Println(suffixArray)
-
-			// Llama a la función "Burrow's Wheeler Transform"
-			fmt.Println("Ejecutando Burrow's Wheeler Transform")
-			bwt := "annb$aa" // Ejemplo de BWT para la cadena "banana"
-			_, _, original := runBWT(bwt)
-			fmt.Println("Cadena original reconstruida:")
-			fmt.Println(original)
-
-			// Llama a la función "FM-Index"
-			fmt.Println("Ejecutando FM-Index")
-			pattern := "ban"
-			positions := backwardSearch(pattern, bwt)
-			fmt.Println("Posiciones del patrón:", positions)
+			textFiles = append(textFiles, filepath.Join("data", file.Name()))
 		}
 	}
+
+	// Comparar los archivos para determinar similitud
+	compareFiles(textFiles)
 }
