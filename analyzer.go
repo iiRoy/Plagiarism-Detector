@@ -5,24 +5,57 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	
+	"regexp"
 )
+
+var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
+
+// Función para eliminar los caractéres especiales de un texto
+func onlyCharacters(str string) string {
+	return nonAlphanumericRegex.ReplaceAllString(str, "")
+}
+
+func contains(slice []string, item string) bool {
+	item = filepath.Clean(item)
+	for _, str := range slice {
+		if filepath.Clean(str) == item {
+			return true
+		}
+	}
+	return false
+}
+
+// Función para cambiar a minúsculas los elementos en el archivo
+func toLowerCase(s string) string {
+	var result string
+	for _, char := range s {
+		if char >= 'A' && char <= 'Z' {
+			result += string(char + 32)
+		} else {
+			result += string(char)
+		}
+	}
+	return result
+}
 
 // Función para leer un archivo y devolver su contenido
 func readFile(filename string) string {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
-		fmt.Println("Error al leer el archivo:", err)
+		fmt.Println("Error reading the file:", err)
 		os.Exit(1)
 	}
-	return string(content)
+
+	processedContent := toLowerCase(onlyCharacters(string(content)))
+
+	return processedContent
 }
 
 // Función para encontrar la mayor substring común entre dos textos
 func longestCommonSubstring(text1, text2 string) string {
 	maxLen := 0
 	longestSubstr := ""
-	
+
 	// Creamos una tabla para almacenar la longitud de substrings comunes
 	table := make([][]int, len(text1)+1)
 	for i := range table {
@@ -46,45 +79,45 @@ func longestCommonSubstring(text1, text2 string) string {
 }
 
 // Función para comparar archivos y determinar similitud basada en más del 50% de contenido común
-func compareFiles(files []string) {
+func compareFiles(originals, others []string) {
 	fileContents := make(map[string]string)
 
 	// Leer todos los archivos
-	for _, file := range files {
+	for _, file := range originals {
 		content := readFile(file)
 		fileContents[file] = content
 	}
 
-	// Comparar los archivos
+	// Comparar cada original con el resto de los archivos
 	similarFiles := make([][2]string, 0)
 
-	for i := 0; i < len(files); i++ {
-		for j := i + 1; j < len(files); j++ {
-			// Obtener el contenido de los archivos
-			content1 := fileContents[files[i]]
-			content2 := fileContents[files[j]]
+	for _, original := range originals {
+		content1 := fileContents[original]
+		for _, other := range others {
+			// Contenidos del 2° Archivo
+			content2 := readFile(other)
 
-			// Encontrar la mayor substring común
+			// Encontrar el Substring más Largo
 			longestCommon := longestCommonSubstring(content1, content2)
 
-			// Determinar el tamaño de la substring común
+			// Determinar el Substring común más largo
 			lenCommon := len(longestCommon)
 			lenText1 := len(content1)
 			lenText2 := len(content2)
 
-			// Verificar si la substring común es mayor al 50% del texto más corto
-			if float64(lenCommon) >= 0.3*float64(min(lenText1, lenText2)) {
-				similarFiles = append(similarFiles, [2]string{files[i], files[j]})
+			// Verificar que la similitud sea mayor al 50%
+			if float64(lenCommon) >= 0.5*float64(min(lenText1, lenText2)) {
+				similarFiles = append(similarFiles, [2]string{original, other})
 			}
 		}
 	}
 
-	// Mostrar resultados finales
-	fmt.Println("Archivos similares (comparten más del 50% de contenido):")
+	// Mostrar resultados
+	fmt.Println("Similar files (share more than 50% of content):")
 	for _, pair := range similarFiles {
-		fmt.Printf("Archivo %s y Archivo %s son similares.\n", pair[0], pair[1])
+		fmt.Printf("File %s and File %s are similar.\n", pair[0], pair[1])
 	}
-}	
+}
 
 // Función auxiliar para encontrar el mínimo entre dos números
 func min(a, b int) int {
@@ -95,6 +128,14 @@ func min(a, b int) int {
 }
 
 func main() {
+	Originals := []string{
+		"data/orig_taska.txt",
+		"data/orig_taskb.txt",
+		"data/orig_taskc.txt",
+		"data/orig_taskd.txt",
+		"data/orig_taske.txt",
+	}
+
 	// Leer todos los archivos de la carpeta "data"
 	files, err := ioutil.ReadDir("data")
 	if err != nil {
@@ -103,13 +144,14 @@ func main() {
 	}
 
 	// Filtrar solo los archivos .txt
-	var textFiles []string
+	var otherFiles []string
 	for _, file := range files {
-		if !file.IsDir() && filepath.Ext(file.Name()) == ".txt" {
-			textFiles = append(textFiles, filepath.Join("data", file.Name()))
+		filePath := filepath.Join("data", file.Name())
+		if !file.IsDir() && filepath.Ext(file.Name()) == ".txt" && !contains(Originals, filePath) {
+			otherFiles = append(otherFiles, filePath)
 		}
 	}
 
 	// Comparar los archivos para determinar similitud
-	compareFiles(textFiles)
+	compareFiles(Originals, otherFiles)
 }
