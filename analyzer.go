@@ -79,41 +79,32 @@ func longestCommonSubstring(text1, text2 string) string {
 }
 
 // Función para comparar archivos y determinar similitud basada en más del 50% de contenido común
-func compareFiles(originals, others []string) {
-	fileContents := make(map[string]string)
+func compareFiles(original string, others []string) {
+	// Leer el archivo original
+	content1 := readFile(original)
 
-	// Leer todos los archivos
-	for _, file := range originals {
-		content := readFile(file)
-		fileContents[file] = content
-	}
-
-	// Comparar cada original con el resto de los archivos
+	// Comparar el archivo original con los otros archivos
 	similarFiles := make([][2]string, 0)
 
-	for _, original := range originals {
-		content1 := fileContents[original]
-		for _, other := range others {
-			// Contenidos del 2° Archivo
-			content2 := readFile(other)
+	for _, other := range others {
+		content2 := readFile(other)
 
-			// Encontrar el Substring más Largo
-			longestCommon := longestCommonSubstring(content1, content2)
+		// Encontrar el Substring más Largo
+		longestCommon := longestCommonSubstring(content1, content2)
 
-			// Determinar el Substring común más largo
-			lenCommon := len(longestCommon)
-			lenText1 := len(content1)
-			lenText2 := len(content2)
+		// Determinar el Substring común más largo
+		lenCommon := len(longestCommon)
+		lenText1 := len(content1)
+		lenText2 := len(content2)
 
-			// Verificar que la similitud sea mayor al 50%
-			if float64(lenCommon) >= 0.5*float64(min(lenText1, lenText2)) {
-				similarFiles = append(similarFiles, [2]string{original, other})
-			}
+		// Verificar que la similitud sea mayor al 30%
+		if float64(lenCommon) >= 0.25*float64(min(lenText1, lenText2)) {
+			similarFiles = append(similarFiles, [2]string{original, other})
 		}
 	}
 
 	// Mostrar resultados
-	fmt.Println("Similar files (share more than 50% of content):")
+	fmt.Println("Similar files (share more than 25% of content):")
 	for _, pair := range similarFiles {
 		fmt.Printf("File %s and File %s are similar.\n", pair[0], pair[1])
 	}
@@ -136,22 +127,127 @@ func main() {
 		"data/orig_taske.txt",
 	}
 
-	// Leer todos los archivos de la carpeta "data"
-	files, err := ioutil.ReadDir("data")
-	if err != nil {
-		fmt.Println("Error al leer la carpeta data:", err)
-		os.Exit(1)
+	TaskA := []string{
+		"data/g0pA_taska.txt",
+		"data/g0pB_taska.txt",
+		"data/g0pC_taska.txt",
+		"data/g0pD_taska.txt",
+		"data/g0pE_taska.txt",
+		"data/g1pA_taska.txt",
+		"data/g1pB_taska.txt",
+		"data/g1pD_taska.txt",
+		"data/g2pA_taska.txt",
+		"data/g2pB_taska.txt",
+		"data/g2pC_taska.txt",
+		"data/g2pE_taska.txt",
+		"data/g3pA_taska.txt",
+		"data/g3pB_taska.txt",
+		"data/g3pC_taska.txt",
+		"data/g4pB_taska.txt",
+		"data/g4pC_taska.txt",
+		"data/g4pD_taska.txt",
+		"data/g4pE_taska.txt",
 	}
 
-	// Filtrar solo los archivos .txt
-	var otherFiles []string
-	for _, file := range files {
-		filePath := filepath.Join("data", file.Name())
-		if !file.IsDir() && filepath.Ext(file.Name()) == ".txt" && !contains(Originals, filePath) {
-			otherFiles = append(otherFiles, filePath)
-		}
+	TaskB := []string{
+		"data/g0pA_taskb.txt",
+		"data/g0pB_taskb.txt",
+		"data/g0pC_taskb.txt",
+		"data/g0pD_taskb.txt",
+		"data/g0pE_taskb.txt",
+		"data/g1pA_taskb.txt",
+		"data/g1pB_taskb.txt",
+		"data/g1pD_taskb.txt",
+		"data/g2pA_taskb.txt",
+		"data/g2pB_taskb.txt",
+		"data/g2pC_taskb.txt",
+		"data/g2pE_taskb.txt",
+		"data/g3pA_taskb.txt",
+		"data/g3pB_taskb.txt",
+		"data/g3pC_taskb.txt",
+		"data/g4pB_taskb.txt",
+		"data/g4pC_taskb.txt",
+		"data/g4pD_taskb.txt",
+		"data/g4pE_taskb.txt",
 	}
 
-	// Comparar los archivos para determinar similitud
-	compareFiles(Originals, otherFiles)
+	TaskC := []string{
+		"data/g0pA_taskc.txt",
+		"data/g0pB_taskc.txt",
+		"data/g0pC_taskc.txt",
+		"data/g0pD_taskc.txt",
+		"data/g0pE_taskc.txt",
+		"data/g1pA_taskc.txt",
+		"data/g1pB_taskc.txt",
+		"data/g1pD_taskc.txt",
+		"data/g2pA_taskc.txt",
+		"data/g2pB_taskc.txt",
+		"data/g2pC_taskc.txt",
+		"data/g2pE_taskc.txt",
+		"data/g3pA_taskc.txt",
+		"data/g3pB_taskc.txt",
+		"data/g3pC_taskc.txt",
+		"data/g4pB_taskc.txt",
+		"data/g4pC_taskc.txt",
+		"data/g4pD_taskc.txt",
+		"data/g4pE_taskc.txt",
+	}
+
+	TaskD := []string{
+		"data/g0pA_taskd.txt",
+		"data/g0pB_taskd.txt",
+		"data/g0pC_taskd.txt",
+		"data/g0pD_taskd.txt",
+		"data/g0pE_taskd.txt",
+		"data/g1pA_taskd.txt",
+		"data/g1pB_taskd.txt",
+		"data/g1pD_taskd.txt",
+		"data/g2pA_taskd.txt",
+		"data/g2pB_taskd.txt",
+		"data/g2pC_taskd.txt",
+		"data/g2pE_taskd.txt",
+		"data/g3pA_taskd.txt",
+		"data/g3pB_taskd.txt",
+		"data/g3pC_taskd.txt",
+		"data/g4pB_taskd.txt",
+		"data/g4pC_taskd.txt",
+		"data/g4pD_taskd.txt",
+		"data/g4pE_taskd.txt",
+	}
+
+	TaskE := []string{
+		"data/g0pA_taske.txt",
+		"data/g0pB_taske.txt",
+		"data/g0pC_taske.txt",
+		"data/g0pD_taske.txt",
+		"data/g0pE_taske.txt",
+		"data/g1pA_taske.txt",
+		"data/g1pB_taske.txt",
+		"data/g1pD_taske.txt",
+		"data/g2pA_taske.txt",
+		"data/g2pB_taske.txt",
+		"data/g2pC_taske.txt",
+		"data/g2pE_taske.txt",
+		"data/g3pA_taske.txt",
+		"data/g3pB_taske.txt",
+		"data/g3pC_taske.txt",
+		"data/g4pB_taske.txt",
+		"data/g4pC_taske.txt",
+		"data/g4pD_taske.txt",
+		"data/g4pE_taske.txt",
+	}
+
+	taskFilesMap := map[string][]string{
+		"data/orig_taska.txt": TaskA,
+		"data/orig_taskb.txt": TaskB,
+		"data/orig_taskc.txt": TaskC,
+		"data/orig_taskd.txt": TaskD,
+		"data/orig_taske.txt": TaskE,
+	}
+
+	// Loop through the original files and compare with corresponding task files
+	for _, original := range Originals {
+		fmt.Printf("\nComparing %s:\n", original)
+		compareFiles(original, taskFilesMap[original])
+	}
 }
