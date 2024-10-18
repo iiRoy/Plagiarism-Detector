@@ -6,11 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 )
 
-var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
+var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9]`)
 
-// Función para eliminar los caractéres especiales de un texto
+// Función para eliminar los caracteres especiales de un texto
 func onlyCharacters(str string) string {
 	return nonAlphanumericRegex.ReplaceAllString(str, "")
 }
@@ -51,26 +52,51 @@ func readFile(filename string) string {
 	return processedContent
 }
 
-// Función para encontrar la mayor substring común entre dos textos
-func longestCommonSubstring(text1, text2 string) string {
+// SuffixArray es una estructura que contiene los sufijos de un texto y permite buscar substrings
+type SuffixArray struct {
+	text    string
+	suffixes []int
+}
+
+// Crear un sufijo array para un texto
+func buildSuffixArray(text string) SuffixArray {
+	n := len(text)
+	suffixes := make([]int, n)
+
+	// Generar todos los sufijos
+	for i := 0; i < n; i++ {
+		suffixes[i] = i
+	}
+
+	// Ordenar los sufijos alfabéticamente
+	sort.Slice(suffixes, func(i, j int) bool {
+		return text[suffixes[i]:] < text[suffixes[j]:]
+	})
+
+	return SuffixArray{
+		text:    text,
+		suffixes: suffixes,
+	}
+}
+
+// Buscar el substring más largo entre dos textos utilizando Suffix Array
+func longestCommonSubstringSA(text1, text2 string) string {
+	sa1 := buildSuffixArray(text1)
+	sa2 := buildSuffixArray(text2)
+
 	maxLen := 0
 	longestSubstr := ""
 
-	// Creamos una tabla para almacenar la longitud de substrings comunes
-	table := make([][]int, len(text1)+1)
-	for i := range table {
-		table[i] = make([]int, len(text2)+1)
-	}
-
-	// Llenamos la tabla comparando cada carácter de text1 y text2
-	for i := 1; i <= len(text1); i++ {
-		for j := 1; j <= len(text2); j++ {
-			if text1[i-1] == text2[j-1] {
-				table[i][j] = table[i-1][j-1] + 1
-				if table[i][j] > maxLen {
-					maxLen = table[i][j]
-					longestSubstr = text1[i-maxLen : i]
-				}
+	// Buscar el substring más largo común entre los dos sufijo arrays
+	for _, idx1 := range sa1.suffixes {
+		for _, idx2 := range sa2.suffixes {
+			length := 0
+			for idx1+length < len(text1) && idx2+length < len(text2) && text1[idx1+length] == text2[idx2+length] {
+				length++            // Comparar caracteres en ambos textos
+			}
+			if length > maxLen {
+				maxLen = length
+				longestSubstr = text1[idx1 : idx1+length]
 			}
 		}
 	}
@@ -78,41 +104,101 @@ func longestCommonSubstring(text1, text2 string) string {
 	return longestSubstr
 }
 
-// Función para comparar archivos y determinar similitud basada en más del 50% de contenido común
-func compareFiles(original string, others []string) {
-	// Leer el archivo original
-	content1 := readFile(original)
+// Función para calcular la distancia de Levenshtein entre dos cadenas
+func levenshtein(a, b string) int {
+	la, lb := len(a), len(b)
+	if la == 0 {
+		return lb
+	}
+	if lb == 0 {
+		return la
+	}
 
-	// Comparar el archivo original con los otros archivos
-	similarFiles := make([][2]string, 0)
+	// Crear la matriz
+	matrix := make([][]int, la+1)
+	for i := range matrix {
+		matrix[i] = make([]int, lb+1)
+	}
 
-	for _, other := range others {
-		content2 := readFile(other)
+	// Inicializar la primera fila y columna
+	for i := 0; i <= la; i++ {
+		matrix[i][0] = i
+	}
+	for j := 0; j <= lb; j++ {
+		matrix[0][j] = j
+	}
 
-		// Encontrar el Substring más Largo
-		longestCommon := longestCommonSubstring(content1, content2)
-
-		// Determinar el Substring común más largo
-		lenCommon := len(longestCommon)
-		lenText1 := len(content1)
-		lenText2 := len(content2)
-
-		// Verificar que la similitud sea mayor al 30%
-		if float64(lenCommon) >= 0.25*float64(min(lenText1, lenText2)) {
-			similarFiles = append(similarFiles, [2]string{original, other})
+	// Llenar la matriz
+	for i := 1; i <= la; i++ {
+		for j := 1; j <= lb; j++ {
+			cost := 0
+			if a[i-1] != b[j-1] {
+				cost = 1
+			}
+			matrix[i][j] = min(matrix[i-1][j]+1, min(matrix[i][j-1]+1, matrix[i-1][j-1]+cost))
 		}
 	}
 
-	// Mostrar resultados
-	fmt.Println("Similar files (share more than 25% of content):")
-	for _, pair := range similarFiles {
-		fmt.Printf("File %s and File %s are similar.\n", pair[0], pair[1])
-	}
+	return matrix[la][lb]
+}
+
+// Función para comparar archivos y determinar similitud basada en más del 25% de contenido común
+func compareFiles(original string, others []string) {
+    // Leer el archivo original
+    content1 := readFile(original)
+
+    // Crear una lista para almacenar archivos similares
+    similarFiles := make([][2]string, 0)
+
+    // Comparar el archivo original con los otros archivos
+    for _, other := range others {
+        content2 := readFile(other)
+
+        // Encontrar el Substring más Largo usando Suffix Array
+        longestCommon := longestCommonSubstringSA(content1, content2)
+
+        // Determinar el Substring común más largo
+        lenCommon := len(longestCommon)
+        lenText1 := len(content1)
+        lenText2 := len(content2)
+
+        // Verificar que la similitud sea mayor al 25% usando el Suffix Array
+        if float64(lenCommon) >= 0.25*float64(min(lenText1, lenText2)) {
+            similarFiles = append(similarFiles, [2]string{original, other})
+        } else {
+            // Si no cumple el criterio del Suffix Array, calcular Levenshtein
+            distance := levenshtein(content1, content2)
+            similarity := 1 - float64(distance)/float64(max(lenText1, lenText2))
+
+            // Verificar si la similitud basada en Levenshtein es mayor al 75%
+            if similarity >= 0.75 {
+                similarFiles = append(similarFiles, [2]string{original, other})
+            }
+        }
+    }
+
+    // Mostrar resultados
+    if len(similarFiles) > 0 {
+        fmt.Println("Archivos similares (comparten más del 25% de contenido o 75% de similitud con Levenshtein):")
+        for _, pair := range similarFiles {
+            fmt.Printf("File %s y File %s son similares.\n", pair[0], pair[1])
+        }
+    } else {
+        fmt.Println("No se encontraron archivos similares para", original)
+    }
 }
 
 // Función auxiliar para encontrar el mínimo entre dos números
 func min(a, b int) int {
 	if a < b {
+		return a
+	}
+	return b
+}
+
+// Función auxiliar para encontrar el máximo entre dos números
+func max(a, b int) int {
+	if a > b {
 		return a
 	}
 	return b
@@ -237,17 +323,22 @@ func main() {
 		"data/g4pE_taske.txt",
 	}
 
+	// Mapa de los archivos de tareas
 	taskFilesMap := map[string][]string{
 		"data/orig_taska.txt": TaskA,
 		"data/orig_taskb.txt": TaskB,
 		"data/orig_taskc.txt": TaskC,
+
 		"data/orig_taskd.txt": TaskD,
+
 		"data/orig_taske.txt": TaskE,
+
+		// Añade más tareas...
 	}
 
-	// Loop through the original files and compare with corresponding task files
+	// Comparar archivos
 	for _, original := range Originals {
-		fmt.Printf("\nComparing %s:\n", original)
+		fmt.Printf("\nComparando %s:\n", original)
 		compareFiles(original, taskFilesMap[original])
 	}
 }

@@ -9,4 +9,4 @@ Inheritance is also sometimes called generalization, because the is-a relationsh
 An advantage of inheritance is that modules with sufficiently similar interfaces can share a lot of code, reducing the complexity of the program. Inheritance therefore has another view, a dual, called polymorphism, which describes many pieces of code being controlled by shared control code.
 Inheritance is typically accomplished either by overriding (replacing) one or more methods exposed by ancestor, or by adding new methods to those exposed by an ancestor.
 
-Complex inheritance, or inheritance used within a design that is not sufficiently mature, may lead to the Yo-yo problem.
+Complex inheritance, or inheritance used within a design that is not sufficiently mature, may lead to the Yo-yo problem.    
