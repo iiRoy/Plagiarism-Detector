@@ -4,118 +4,105 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"regexp"
+	"sort"
+	"strings"
 )
 
-var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
+var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9]+`)
 
-// Función para eliminar los caractéres especiales de un texto
+// Function to remove special characters from a string
 func onlyCharacters(str string) string {
 	return nonAlphanumericRegex.ReplaceAllString(str, "")
 }
 
-func contains(slice []string, item string) bool {
-	item = filepath.Clean(item)
-	for _, str := range slice {
-		if filepath.Clean(str) == item {
-			return true
-		}
-	}
-	return false
-}
-
-// Función para cambiar a minúsculas los elementos en el archivo
+// Function to convert all characters to lowercase
 func toLowerCase(s string) string {
-	var result string
-	for _, char := range s {
-		if char >= 'A' && char <= 'Z' {
-			result += string(char + 32)
-		} else {
-			result += string(char)
-		}
-	}
-	return result
+	return strings.ToLower(s)
 }
 
-// Función para leer un archivo y devolver su contenido
+// Function to read a file and return its content as a cleaned string
 func readFile(filename string) string {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		fmt.Println("Error reading the file:", err)
 		os.Exit(1)
 	}
-
 	processedContent := toLowerCase(onlyCharacters(string(content)))
-
 	return processedContent
 }
 
-// Función para encontrar la mayor substring común entre dos textos
-func longestCommonSubstring(text1, text2 string) string {
-	maxLen := 0
-	longestSubstr := ""
-
-	// Creamos una tabla para almacenar la longitud de substrings comunes
-	table := make([][]int, len(text1)+1)
-	for i := range table {
-		table[i] = make([]int, len(text2)+1)
+// Function to build the suffix array of a string
+func buildSuffixArray(text string) []int {
+	n := len(text)
+	suffixArr := make([]int, n)
+	for i := range suffixArr {
+		suffixArr[i] = i
 	}
+	sort.Slice(suffixArr, func(i, j int) bool {
+		return text[suffixArr[i]:] < text[suffixArr[j]:]
+	})
+	return suffixArr
+}
 
-	// Llenamos la tabla comparando cada carácter de text1 y text2
-	for i := 1; i <= len(text1); i++ {
-		for j := 1; j <= len(text2); j++ {
-			if text1[i-1] == text2[j-1] {
-				table[i][j] = table[i-1][j-1] + 1
-				if table[i][j] > maxLen {
-					maxLen = table[i][j]
-					longestSubstr = text1[i-maxLen : i]
-				}
+// Function to find the longest common prefix between two substrings
+func longestCommonPrefix(text string, i, j int) int {
+	n := len(text)
+	length := 0
+	for i+length < n && j+length < n && text[i+length] == text[j+length] {
+		length++
+	}
+	return length
+}
+
+// Function to find the longest common substring between two strings using their suffix arrays
+func longestCommonSubstring(text1, text2 string) int {
+	combined := text1 + "#" + text2
+	suffixArr := buildSuffixArray(combined)
+
+	n1 := len(text1)
+	longestLen := 0
+
+	for i := 1; i < len(suffixArr); i++ {
+		if (suffixArr[i-1] < n1 && suffixArr[i] > n1) || (suffixArr[i-1] > n1 && suffixArr[i] < n1) {
+			lcp := longestCommonPrefix(combined, suffixArr[i-1], suffixArr[i])
+			if lcp > longestLen {
+				longestLen = lcp
 			}
 		}
 	}
-
-	return longestSubstr
+	return longestLen
 }
 
-// Función para comparar archivos y determinar similitud basada en más del 50% de contenido común
-func compareFiles(original string, others []string) {
-	// Leer el archivo original
-	content1 := readFile(original)
+// Function to calculate percentage similarity
+func calculateSimilarity(content1, content2 string, commonLength int) float64 {
+	// Calculate the percentage based on the smaller text length or average length
+	shorterLength := len(content1)
+	if len(content2) < len(content1) {
+		shorterLength = len(content2)
+	}
 
-	// Comparar el archivo original con los otros archivos
-	similarFiles := make([][2]string, 0)
+	// Similarity as percentage of shorter text
+	percentage := (float64(commonLength) / float64(shorterLength)) * 100
+	return percentage
+}
+
+// Function to compare files and find common substrings with percentage similarity
+func compareFiles(original string, others []string) {
+	content1 := readFile(original)
 
 	for _, other := range others {
 		content2 := readFile(other)
+		commonLength := longestCommonSubstring(content1, content2)
 
-		// Encontrar el Substring más Largo
-		longestCommon := longestCommonSubstring(content1, content2)
+		if commonLength > 0 {
+			percentage := calculateSimilarity(content1, content2, commonLength)
 
-		// Determinar el Substring común más largo
-		lenCommon := len(longestCommon)
-		lenText1 := len(content1)
-		lenText2 := len(content2)
-
-		// Verificar que la similitud sea mayor al 30%
-		if float64(lenCommon) >= 0.25*float64(min(lenText1, lenText2)) {
-			similarFiles = append(similarFiles, [2]string{original, other})
+			fmt.Printf("File %s and File %s have a similarity of %.2f%%\n", original, other, percentage)
+		} else {
+			fmt.Printf("File %s and File %s do not share a common substring.\n", original, other)
 		}
 	}
-
-	// Mostrar resultados
-	fmt.Println("Similar files (share more than 25% of content):")
-	for _, pair := range similarFiles {
-		fmt.Printf("File %s and File %s are similar.\n", pair[0], pair[1])
-	}
-}
-
-// Función auxiliar para encontrar el mínimo entre dos números
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func main() {
@@ -245,7 +232,7 @@ func main() {
 		"data/orig_taske.txt": TaskE,
 	}
 
-	// Loop through the original files and compare with corresponding task files
+	// Compare the original files with task files
 	for _, original := range Originals {
 		fmt.Printf("\nComparing %s:\n", original)
 		compareFiles(original, taskFilesMap[original])
