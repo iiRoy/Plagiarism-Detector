@@ -6,22 +6,23 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
 var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9]+`)
 
-// Function to remove special characters from a string
+// Función para remover caracteres especiales
 func onlyCharacters(str string) string {
 	return nonAlphanumericRegex.ReplaceAllString(str, "")
 }
 
-// Function to convert all characters to lowercase
+// Función para remover las mayúsculas
 func toLowerCase(s string) string {
 	return strings.ToLower(s)
 }
 
-// Function to read a file and return its content as a cleaned string
+// Leer archivos y almacenar sus contenidos como un String "limpio"
 func readFile(filename string) string {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -32,7 +33,7 @@ func readFile(filename string) string {
 	return processedContent
 }
 
-// Function to build the suffix array of a string
+// Construcción del Suffix Array
 func buildSuffixArray(text string) []int {
 	n := len(text)
 	suffixArr := make([]int, n)
@@ -45,7 +46,7 @@ func buildSuffixArray(text string) []int {
 	return suffixArr
 }
 
-// Function to find the longest common prefix between two substrings
+// Encontrar el prefijo común más largo entre 2 Strings
 func longestCommonPrefix(text string, i, j int) int {
 	n := len(text)
 	length := 0
@@ -55,7 +56,7 @@ func longestCommonPrefix(text string, i, j int) int {
 	return length
 }
 
-// Function to find the longest common substring between two strings using their suffix arrays
+// Búsqueda del Substring más largo en común usadno Suffix Array
 func longestCommonSubstring(text1, text2 string) int {
 	combined := text1 + "#" + text2
 	suffixArr := buildSuffixArray(combined)
@@ -74,21 +75,19 @@ func longestCommonSubstring(text1, text2 string) int {
 	return longestLen
 }
 
-// Function to calculate percentage similarity
+// Calcular porcentaje de similitud
 func calculateSimilarity(content1, content2 string, commonLength int) float64 {
-	// Calculate the percentage based on the smaller text length or average length
 	shorterLength := len(content1)
 	if len(content2) < len(content1) {
 		shorterLength = len(content2)
 	}
 
-	// Similarity as percentage of shorter text
 	percentage := (float64(commonLength) / float64(shorterLength)) * 100
 	return percentage
 }
 
-// Function to compare files and find common substrings with percentage similarity
-func compareFiles(original string, others []string) {
+// Comparación & guardado de archivos
+func compareFiles(original string, others []string, comparisons *[][]string) {
 	content1 := readFile(original)
 
 	for _, other := range others {
@@ -97,10 +96,14 @@ func compareFiles(original string, others []string) {
 
 		if commonLength > 0 {
 			percentage := calculateSimilarity(content1, content2, commonLength)
-
-			fmt.Printf("File %s and File %s have a similarity of %.2f%%\n", original, other, percentage)
-		} else {
-			fmt.Printf("File %s and File %s do not share a common substring.\n", original, other)
+			// Guardar si la comparación es al menos 20% similar
+			if percentage >= 20 {
+				*comparisons = append(*comparisons, []string{
+					original,
+					other,
+					strconv.FormatFloat(percentage, 'f', 2, 64),
+				})
+			}
 		}
 	}
 }
@@ -232,9 +235,26 @@ func main() {
 		"data/orig_taske.txt": TaskE,
 	}
 
-	// Compare the original files with task files
+	// Matriz de todas las comparaciones
+	var comparisons [][]string
+
+	// Comparar los "Originales" con los "Task" y guardar los datos
 	for _, original := range Originals {
-		fmt.Printf("\nComparing %s:\n", original)
-		compareFiles(original, taskFilesMap[original])
+		compareFiles(original, taskFilesMap[original], &comparisons)
+	}
+
+	// Ordenar en base a porcentaje de similitud
+	sort.Slice(comparisons, func(i, j int) bool {
+		similarityI, _ := strconv.ParseFloat(comparisons[i][2], 64)
+		similarityJ, _ := strconv.ParseFloat(comparisons[j][2], 64)
+		return similarityI > similarityJ
+	})
+
+	fmt.Println("\nTop 10 Archivos más parecidos:")
+	for i, comparison := range comparisons {
+		if i >= 10 {
+			break
+		}
+		fmt.Printf("Archivo base: %s, Archivo comparado: %s, Similitud: %s%%\n", comparison[0], comparison[1], comparison[2])
 	}
 }
