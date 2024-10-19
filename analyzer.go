@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 )
 
 var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
@@ -79,55 +78,27 @@ func longestCommonSubstring(text1, text2 string) string {
 	return longestSubstr
 }
 
-// Función para generar n-gramas de un texto
-func nGrams(text string, n int) []string {
-	words := strings.Fields(text)
-	grams := []string{}
-
-	for i := 0; i <= len(words)-n; i++ {
-		gram := strings.Join(words[i:i+n], " ")
-		grams = append(grams, gram)
-	}
-
-	return grams
-}
-
-func intersection(ngrams1, ngrams2 []string) []string {
-	common := []string{}
-	ngramSet := make(map[string]bool)
-
-	// Añadir todos los n-gramas del primer texto a un set
-	for _, ngram := range ngrams1 {
-		ngramSet[ngram] = true
-	}
-
-	// Verificar si los n-gramas del segundo texto están en el set
-	for _, ngram := range ngrams2 {
-		if ngramSet[ngram] {
-			common = append(common, ngram)
-		}
-	}
-
-	return common
-}
-
 // Función para comparar archivos y determinar similitud basada en más del 50% de contenido común
 func compareFiles(original string, others []string) {
 	// Leer el archivo original
 	content1 := readFile(original)
-	ngrams1 := nGrams(content1, 3)
 
 	// Comparar el archivo original con los otros archivos
 	similarFiles := make([][2]string, 0)
 
 	for _, other := range others {
 		content2 := readFile(other)
-		ngrams2 := nGrams(content2, 3)
 
-		commonNgrams := intersection(ngrams1, ngrams2)
+		// Encontrar el Substring más Largo
+		longestCommon := longestCommonSubstring(content1, content2)
 
-		// Verificar que la similitud sea mayor al umbral
-		if float64(len(commonNgrams))/float64(min(len(ngrams1), len(ngrams2))) > 0.2 { // Cambiado al 20%
+		// Determinar el Substring común más largo
+		lenCommon := len(longestCommon)
+		lenText1 := len(content1)
+		lenText2 := len(content2)
+
+		// Verificar que la similitud sea mayor al 30%
+		if float64(lenCommon) >= 0.25*float64(min(lenText1, lenText2)) {
 			similarFiles = append(similarFiles, [2]string{original, other})
 		}
 	}
