@@ -1,0 +1,10 @@
+Integrantes del Equipo:
+-Abigail Pérez García.
+
+Partes realizadas:
+-Agrupación de los documentos a comparar.
+-Implementación de matriz para almacenar archivos.
+-Implementación de Suffix Array & Burrows Wheeler Transform.
+
+-Rodrigo López Guerra.
+-Gadiro Cano Sánchez.
