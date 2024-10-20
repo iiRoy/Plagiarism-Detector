@@ -5,12 +5,15 @@ Partes realizadas:
 -Agrupación de los documentos a comparar.
 -Implementación de matriz para almacenar archivos.
 -Implementación de Suffix Array & Burrows Wheeler Transform.
+- Complejidad de los algoritmos.
 
 -Rodrigo López Guerra.
 
 -Gadiro Cano Sánchez.
 Partes realizadas: 
-- Creación del suffix Array 
-- Creacion e implementacion del Algoritmo de lechestein
-- Ayuda en la implementacion del longest Common suffix
+- Creación del suffix Array. 
+- Creacion e implementacion del Algoritmo de lechestein.
+- Ayuda en la implementacion del longest Common suffix.
 - Ayuda en la creación total del código. 
+- Explicación de funcionalidad y manera en la que se desarrollo la solución 
+
