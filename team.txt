@@ -7,4 +7,10 @@ Partes realizadas:
 -Implementación de Suffix Array & Burrows Wheeler Transform.
 
 -Rodrigo López Guerra.
+
 -Gadiro Cano Sánchez.
+Partes realizadas: 
+- Creación del suffix Array 
+- Creacion e implementacion del Algoritmo de lechestein
+- Ayuda en la implementacion del longest Common suffix
+- Ayuda en la creación total del código. 
