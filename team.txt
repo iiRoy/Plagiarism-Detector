@@ -8,6 +8,10 @@ Partes realizadas:
 - Complejidad de los algoritmos.
 
 -Rodrigo López Guerra.
+- Lectura y procesamiento de archivos.
+- Análisis de complejidad temporal y espacial.
+- Documentación del proyecto.
+- Comentarios en el código e instrucciones de uso.
 
 -Gadiro Cano Sánchez.
 Partes realizadas: 
