@@ -34,47 +34,95 @@ func readFile(filename string) string {
 	return processedContent
 }
 
-// Construcción del Suffix Array
-func buildSuffixArray(text string) []int {
+type SuffixArray struct {
+	text     string
+	suffixes []int
+}
+
+// Build a suffix array for a given text
+func buildSuffixArray(text string) SuffixArray {
 	n := len(text)
-	suffixArr := make([]int, n)
-	for i := range suffixArr {
-		suffixArr[i] = i
+	suffixes := make([]int, n)
+
+	// Generate all suffix indices
+	for i := 0; i < n; i++ {
+		suffixes[i] = i
 	}
-	sort.Slice(suffixArr, func(i, j int) bool {
-		return text[suffixArr[i]:] < text[suffixArr[j]:]
+
+	// Sort suffixes alphabetically based on the suffix substring
+	sort.Slice(suffixes, func(i, j int) bool {
+		return text[suffixes[i]:] < text[suffixes[j]:]
 	})
-	return suffixArr
-}
 
-// Encontrar el prefijo común más largo entre 2 Strings
-func longestCommonPrefix(text string, i, j int) int {
-	n := len(text)
-	length := 0
-	for i+length < n && j+length < n && text[i+length] == text[j+length] {
-		length++
+	return SuffixArray{
+		text:     text,
+		suffixes: suffixes,
 	}
-	return length
 }
 
-// Búsqueda del Substring más largo en común usadno Suffix Array
-func longestCommonSubstring(text1, text2 string) (int, string) {
-	combined := text1 + "#" + text2
-	suffixArr := buildSuffixArray(combined)
-	n1 := len(text1)
-	longestLen := 0
-	commonSubstring := ""
+func longestCommonSubstring(sa1, sa2 SuffixArray) (int, string) {
+	maxLen := 0
+	longestSubstr := ""
 
-	for i := 1; i < len(suffixArr); i++ {
-		if (suffixArr[i-1] < n1 && suffixArr[i] > n1) || (suffixArr[i-1] > n1 && suffixArr[i] < n1) {
-			lcp := longestCommonPrefix(combined, suffixArr[i-1], suffixArr[i])
-			if lcp > longestLen {
-				longestLen = lcp
-				commonSubstring = combined[suffixArr[i] : suffixArr[i]+lcp]
+	for _, idx1 := range sa1.suffixes {
+		for _, idx2 := range sa2.suffixes {
+			length := 0
+			for idx1+length < len(sa1.text) && idx2+length < len(sa2.text) && sa1.text[idx1+length] == sa2.text[idx2+length] {
+				length++
+			}
+			if length > maxLen {
+				maxLen = length
+				longestSubstr = sa1.text[idx1 : idx1+length]
 			}
 		}
 	}
-	return longestLen, commonSubstring
+	return maxLen, longestSubstr
+}
+
+// Levenshtein distance function
+func levenshtein(a, b string) int {
+	la, lb := len(a), len(b)
+	if la == 0 {
+		return lb
+	}
+	if lb == 0 {
+		return la
+	}
+
+	// Create the matrix
+	matrix := make([][]int, la+1)
+	for i := range matrix {
+		matrix[i] = make([]int, lb+1)
+	}
+
+	// Initialize the first row and column
+	for i := 0; i <= la; i++ {
+		matrix[i][0] = i
+	}
+	for j := 0; j <= lb; j++ {
+		matrix[0][j] = j
+	}
+
+	// Fill in the matrix
+	for i := 1; i <= la; i++ {
+		for j := 1; j <= lb; j++ {
+			cost := 0
+			if a[i-1] != b[j-1] {
+				cost = 1
+			}
+			matrix[i][j] = min(matrix[i-1][j]+1, min(matrix[i][j-1]+1, matrix[i-1][j-1]+cost))
+		}
+	}
+
+	return matrix[la][lb]
+}
+
+// Helper function to get the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // Calcular porcentaje de similitud
@@ -94,7 +142,13 @@ func compareFiles(original string, others []string, comparisons *[][]string) {
 
 	for _, other := range others {
 		content2 := readFile(other)
-		commonLength, commonSubstring := longestCommonSubstring(content1, content2)
+
+		// Build suffix arrays for both contents
+		sa1 := buildSuffixArray(content1)
+		sa2 := buildSuffixArray(content2)
+
+		// Find the longest common substring
+		commonLength, commonSubstring := longestCommonSubstring(sa1, sa2)
 
 		if commonLength > 0 {
 			percentage := calculateSimilarity(content1, content2, commonLength)
@@ -117,6 +171,17 @@ func highlightSimilarities(content1, content2, commonSubstring string) (string, 
 	highlighted1 := strings.Replace(content1, commonSubstring, `<span class="highlight">`+commonSubstring+`</span>`, -1)
 	highlighted2 := strings.Replace(content2, commonSubstring, `<span class="highlight">`+commonSubstring+`</span>`, -1)
 	return highlighted1, highlighted2
+}
+
+func insertLineBreaks(text string) string {
+	var result strings.Builder
+	for i, r := range text {
+		if i > 0 && i%100 == 0 {
+			result.WriteString("<br>")
+		}
+		result.WriteRune(r)
+	}
+	return result.String()
 }
 
 func generateHTML(comparisons [][]string) string {
@@ -158,7 +223,18 @@ func generateHTML(comparisons [][]string) string {
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	comparisons := [][]string{}
-	compareFiles("data/orig_taska.txt", []string{"data/g0pA_taska.txt", "data/g0pE_taska.txt"}, &comparisons)
+	compareFiles("data/orig_taska.txt", []string{"data/g0pE_taska.txt"}, &comparisons)
+	compareFiles("data/orig_taske.txt", []string{"data/g0pE_taske.txt"}, &comparisons)
+
+	sort.Slice(comparisons, func(i, j int) bool {
+		similarityI, _ := strconv.ParseFloat(comparisons[i][2], 64)
+		similarityJ, _ := strconv.ParseFloat(comparisons[j][2], 64)
+		return similarityI > similarityJ
+	})
+	if len(comparisons) > 10 {
+		comparisons = comparisons[:10]
+	}
+
 	htmlContent := generateHTML(comparisons)
 	fmt.Fprint(w, htmlContent)
 }
