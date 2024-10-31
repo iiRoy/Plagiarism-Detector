@@ -185,8 +185,7 @@ func insertLineBreaks(text string) string {
 }
 
 func generateHTML(comparisons [][]string) string {
-	htmlContent := `
-	<!DOCTYPE html>
+	htmlContent := `<!DOCTYPE html>
 	<html lang="es">
 	<head>
 		<meta charset="UTF-8">
@@ -206,9 +205,9 @@ func generateHTML(comparisons [][]string) string {
 			<h2>Archivo base: ` + comp[0] + `, Comparado con: ` + comp[1] + `</h2>
 			<p><strong>Similitud:</strong> ` + comp[2] + `%</p>
 			<h3>Contenido del Archivo Base:</h3>
-			<p>` + comp[3] + `</p>
+			<p>` + insertLineBreaks(comp[3]) + `</p>
 			<h3>Contenido del Archivo Comparado:</h3>
-			<p>` + comp[4] + `</p>
+			<p>` + insertLineBreaks(comp[4]) + `</p>
 		</div>
 		<hr>
 		`
@@ -225,6 +224,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	comparisons := [][]string{}
 	compareFiles("data/orig_taska.txt", []string{"data/g0pE_taska.txt"}, &comparisons)
 	compareFiles("data/orig_taske.txt", []string{"data/g0pE_taske.txt"}, &comparisons)
+	compareFiles("data/orig_taskb.txt", []string{"data/g0pE_taskb.txt"}, &comparisons)
+	compareFiles("data/orig_taska.txt", []string{"data/g4pC_taska.txt"}, &comparisons)
+	compareFiles("data/orig_taska.txt", []string{"data/g3pC_taska.txt"}, &comparisons)
+	compareFiles("data/orig_taske.txt", []string{"data/g2pB_taske.txt"}, &comparisons)
+	compareFiles("data/orig_taskd.txt", []string{"data/g3pA_taskd.txt"}, &comparisons)
+	compareFiles("data/orig_taska.txt", []string{"data/g2pC_taska.txt"}, &comparisons)
+	compareFiles("data/orig_taskd.txt", []string{"data/g4pC_taskd.txt"}, &comparisons)
+	compareFiles("data/orig_taske.txt", []string{"data/g4pB_taske.txt"}, &comparisons)
 
 	sort.Slice(comparisons, func(i, j int) bool {
 		similarityI, _ := strconv.ParseFloat(comparisons[i][2], 64)
