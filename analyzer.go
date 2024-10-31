@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"regexp"
 	"sort"
@@ -57,22 +58,23 @@ func longestCommonPrefix(text string, i, j int) int {
 }
 
 // Búsqueda del Substring más largo en común usadno Suffix Array
-func longestCommonSubstring(text1, text2 string) int {
+func longestCommonSubstring(text1, text2 string) (int, string) {
 	combined := text1 + "#" + text2
 	suffixArr := buildSuffixArray(combined)
-
 	n1 := len(text1)
 	longestLen := 0
+	commonSubstring := ""
 
 	for i := 1; i < len(suffixArr); i++ {
 		if (suffixArr[i-1] < n1 && suffixArr[i] > n1) || (suffixArr[i-1] > n1 && suffixArr[i] < n1) {
 			lcp := longestCommonPrefix(combined, suffixArr[i-1], suffixArr[i])
 			if lcp > longestLen {
 				longestLen = lcp
+				commonSubstring = combined[suffixArr[i] : suffixArr[i]+lcp]
 			}
 		}
 	}
-	return longestLen
+	return longestLen, commonSubstring
 }
 
 // Calcular porcentaje de similitud
@@ -92,20 +94,73 @@ func compareFiles(original string, others []string, comparisons *[][]string) {
 
 	for _, other := range others {
 		content2 := readFile(other)
-		commonLength := longestCommonSubstring(content1, content2)
+		commonLength, commonSubstring := longestCommonSubstring(content1, content2)
 
 		if commonLength > 0 {
 			percentage := calculateSimilarity(content1, content2, commonLength)
-			// Guardar si la comparación es al menos 20% similar
 			if percentage >= 20 {
+				highlighted1, highlighted2 := highlightSimilarities(content1, content2, commonSubstring)
 				*comparisons = append(*comparisons, []string{
 					original,
 					other,
 					strconv.FormatFloat(percentage, 'f', 2, 64),
+					highlighted1,
+					highlighted2,
 				})
 			}
 		}
 	}
+}
+
+// Resaltar coincidencias en amarillo en el contenido de cada archivo
+func highlightSimilarities(content1, content2, commonSubstring string) (string, string) {
+	highlighted1 := strings.Replace(content1, commonSubstring, `<span class="highlight">`+commonSubstring+`</span>`, -1)
+	highlighted2 := strings.Replace(content2, commonSubstring, `<span class="highlight">`+commonSubstring+`</span>`, -1)
+	return highlighted1, highlighted2
+}
+
+func generateHTML(comparisons [][]string) string {
+	htmlContent := `
+	<!DOCTYPE html>
+	<html lang="es">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Similitudes entre Archivos</title>
+		<style>
+			.highlight { background-color: yellow; font-weight: bold; }
+		</style>
+	</head>
+	<body>
+		<h1>Comparaciones de Archivos</h1>
+	`
+
+	for _, comp := range comparisons {
+		htmlContent += `
+		<div>
+			<h2>Archivo base: ` + comp[0] + `, Comparado con: ` + comp[1] + `</h2>
+			<p><strong>Similitud:</strong> ` + comp[2] + `%</p>
+			<h3>Contenido del Archivo Base:</h3>
+			<p>` + comp[3] + `</p>
+			<h3>Contenido del Archivo Comparado:</h3>
+			<p>` + comp[4] + `</p>
+		</div>
+		<hr>
+		`
+	}
+
+	htmlContent += `
+	</body>
+	</html>
+	`
+	return htmlContent
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	comparisons := [][]string{}
+	compareFiles("data/orig_taska.txt", []string{"data/g0pA_taska.txt", "data/g0pE_taska.txt"}, &comparisons)
+	htmlContent := generateHTML(comparisons)
+	fmt.Fprint(w, htmlContent)
 }
 
 func main() {
@@ -256,5 +311,12 @@ func main() {
 			break
 		}
 		fmt.Printf("Archivo base: %s, Archivo comparado: %s, Similitud: %s%%\n", comparison[0], comparison[1], comparison[2])
+	}
+
+	http.HandleFunc("/", handler)
+	fmt.Println("Servidor escuchando en http://localhost:8000")
+	err := http.ListenAndServe(":8000", nil)
+	if err != nil {
+		fmt.Println("Error al iniciar el servidor:", err)
 	}
 }
