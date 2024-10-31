@@ -314,6 +314,8 @@ func main() {
 	}
 
 	http.HandleFunc("/", handler)
+	fmt.Println("")
+	fmt.Println("HTML Generado con éxito")
 	fmt.Println("Servidor escuchando en http://localhost:8000")
 	err := http.ListenAndServe(":8000", nil)
 	if err != nil {
